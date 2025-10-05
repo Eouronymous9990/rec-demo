@@ -602,7 +602,7 @@ def reset_detection_state():
     skip_frames = 0
     prev_pitch = None
 
-
+frame_history = []
 def analyze_videos(front_path, side_path):
     chosen_frame = None
     reset_detection_state()
@@ -654,17 +654,24 @@ def analyze_videos(front_path, side_path):
                         (side_left_ankle[1] - center_side[1])**2
                     ) 
 
-            if prev_distance is None:
-                prev_distance = distance
-                prev_frame = frame.copy()
-                prev_side_frame = side_frame.copy() 
-            else:
-                if distance < prev_distance:
-                    chosen_frame = frame.copy()
-                    chosen_side_frame = side_frame.copy() 
-                else:
-                    chosen_frame = prev_frame.copy()
-                    chosen_side_frame = prev_side_frame.copy()             
+            
+            
+            # Inside your loop
+            frame_history.append({
+                'distance': distance,
+                'frame': frame.copy(),
+                'side_frame': side_frame.copy()
+            })
+            
+            # Keep only last 5 frames
+            if len(frame_history) > 5:
+                frame_history.pop(0)
+            
+            # Find and select the frame with minimum distance
+            if frame_history:
+                min_frame_data = min(frame_history, key=lambda x: x['distance'])
+                chosen_frame = min_frame_data['frame'].copy()
+                chosen_side_frame = min_frame_data['side_frame'].copy()
                     
                 r_a_a, r_a_d = draw_ankel_arrow(chosen_frame, right_ankle, finger_xy_r, hip=right_hip, knee=right_knee, color=(255,0,255))
                 l_a_a, l_a_d = draw_ankel_arrow(chosen_frame, left_ankle, finger_xy_l, hip=left_hip, knee=left_knee, color=(255,0,0))
