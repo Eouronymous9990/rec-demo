@@ -319,7 +319,7 @@ def check_receiving_position(side_frame, right_point, left_point, ball_center, b
                     (right_point[0], right_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        if right_dist < 80:
+        if right_dist < 50:
             print("detected (right foot)")
             return True
             
@@ -332,7 +332,7 @@ def check_receiving_position(side_frame, right_point, left_point, ball_center, b
                     (left_point[0], left_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        if left_dist < 80:
+        if left_dist < 50:
             print("detected (left foot)")
             return True
             
