@@ -656,7 +656,7 @@ def analyze_receiving_actions(path, side_path, pose, pose_side, dis_threshold=10
             else:
                 distance = None
 
-            if distance is not None and distance < dis_threshold:
+            if distance is not None and distance < dist_threshold:
                 # إذا كانت أول مرة أو مسافة أصغر من السابقة
                 if chosen_distance is None or distance < chosen_distance:
                     chosen_distance = distance
