@@ -302,7 +302,7 @@ def detect_receiving_foot(best_box, ball_center):
     
     else:
         return determined_foot
-
+dist_threshold=130
 def check_receiving_position(side_frame, right_point, left_point, ball_center, best_box): 
     if ball_center == (0, 0) or right_point is None or left_point is None or best_box is None:
         return False  
@@ -319,7 +319,7 @@ def check_receiving_position(side_frame, right_point, left_point, ball_center, b
                     (right_point[0], right_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        if right_dist < 50:
+        if right_dist < dist_threshold:
             print("detected (right foot)")
             return True
             
@@ -332,7 +332,7 @@ def check_receiving_position(side_frame, right_point, left_point, ball_center, b
                     (left_point[0], left_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        if left_dist < 50:
+        if left_dist < dist_threshold:
             print("detected (left foot)")
             return True
             
@@ -614,7 +614,7 @@ def analyze_videos(front_path, side_path):
     cap2 = cv2.VideoCapture(side_path)
     
     results = []
-    increase_count = 0  # عداد لمرات زيادة المسافة
+    increase_count = 0  
     last_distance = None  
     
     while True:
@@ -665,14 +665,12 @@ def analyze_videos(front_path, side_path):
 
                 last_distance = distance
 
-                # لو المسافة كبرت 3 مرات متتالية → نختار أصغر فريم
                 if increase_count >= 3 and len(frame_history) == 3:
                     best = min(frame_history, key=lambda x: x['distance'])
                     chosen_frame = best['frame']
                     chosen_side_frame = best['side_frame']
                     chosen_distance = best['distance']
 
-                    # === هنا باقي التحليل ===
                     r_a_a, r_a_d = draw_ankel_arrow(chosen_frame, right_ankle, finger_xy_r, hip=right_hip, knee=right_knee, color=(255,0,255))
                     l_a_a, l_a_d = draw_ankel_arrow(chosen_frame, left_ankle, finger_xy_l, hip=left_hip, knee=left_knee, color=(255,0,0))
 
@@ -684,7 +682,6 @@ def analyze_videos(front_path, side_path):
                     if left_hip and left_knee and left_ankle:
                         draw_knee_angle(chosen_frame, left_hip, left_knee, left_ankle, color=(255,0,255))
 
-                    # جانب جانبي
                     if side_right_hip and side_right_knee and side_right_ankle:
                         side_right_angle = draw_knee_angle(chosen_side_frame, side_right_hip, side_right_knee, side_right_ankle, color=(0,255,255))
                     if side_left_hip and side_left_knee and side_left_ankle:
@@ -703,7 +700,6 @@ def analyze_videos(front_path, side_path):
                         print(f"Ankle Y position: {y_perc:.1f} % | X position: {x_perc:.1f} %")
                         cv2.putText(chosen_frame, f"Ankle Y: {y_perc:.1f}% | X: {x_perc:.1f}%", (50,200), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
 
-                    # تصدير وتحليل
                     analysis_dict = export_analysis_to_json(
                         foot, direction, pelvis_angle, torso_angle,
                         {}, None, None, side_torso_angle_,
