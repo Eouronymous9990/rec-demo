@@ -1,4 +1,10 @@
 frame_history = []
+def reset_detection_state():
+    global prev_distance, prev_frame, prev_side_frame, skip_frames
+    prev_distance = None
+    prev_frame = None
+    prev_side_frame = None
+    skip_frames = 0
 
 def analyze_videos(front_path, side_path):
     chosen_frame = None
