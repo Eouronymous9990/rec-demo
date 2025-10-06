@@ -664,7 +664,7 @@ def analyze_videos(front_path, side_path):
             })
             
             # Keep only last 5 frames
-            if len(frame_history) > 5:
+            if len(frame_history) > 10:
                 frame_history.pop(0)
             
             # Find and select the frame with minimum distance
