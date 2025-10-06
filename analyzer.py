@@ -605,7 +605,6 @@ def reset_detection_state():
     return results
 frame_history = []
 
-
 def analyze_videos(front_path, side_path):
     chosen_frame = None
     reset_detection_state()
@@ -731,4 +730,3 @@ def analyze_videos(front_path, side_path):
         raise ValueError("No receiving actions detected in the videos.")
     
     return results
-
