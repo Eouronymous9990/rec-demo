@@ -5,6 +5,10 @@ import os
 import csv
 import io
 from analyzer import analyze_videos
+import os
+os.environ["MEDIAPIPE_DISABLE_DOWNLOAD"] = "1"
+os.environ["MEDIAPIPE_MODEL_PATH"] = "/tmp"
+
 
 st.set_page_config(page_title="Tactiq", layout="wide", initial_sidebar_state="collapsed", page_icon="icon.png")
 
