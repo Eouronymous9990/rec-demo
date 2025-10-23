@@ -36,13 +36,15 @@ pose = mp_pose.Pose(
     min_tracking_confidence=0.7
 ) 
 
-pose_side = mp_pose.Pose(
+mp_pose.Pose(
     static_image_mode=False,
     model_complexity=2,
     enable_segmentation=False,
     min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-) 
+    min_tracking_confidence=0.7,
+    model_complexity_path="models/pose_landmark_full.tflite"
+)
+
 
 MODEL_POINTS = np.array([
     (0.0, 0.0, 0.0),            
