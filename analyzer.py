@@ -30,18 +30,18 @@ prev_side_frame = None
 chosen_side_frame = None
 pose = mp_pose.Pose(
     static_image_mode=False,
-    model_complexity=1,
+    model_complexity=2,
     enable_segmentation=False,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
 ) 
 
 pose_side = mp_pose.Pose(
     static_image_mode=False,
-    model_complexity=1,
+    model_complexity=2,
     enable_segmentation=False,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
 ) 
 
 MODEL_POINTS = np.array([
@@ -127,7 +127,7 @@ def detect_head_pose(frame):
         face_landmarks = results.multi_face_landmarks[0]
         h, w = upper_crop.shape[:2]
         landmarks_2d = []
-        key_landmarks = [1, 152, 33, 263, 61, 291]  # nose, chin, left eye, right eye, left mouth, right mouth
+        key_landmarks = [1, 152, 33, 263, 61, 291]
 
         for idx in key_landmarks:
             landmark = face_landmarks.landmark[idx]
@@ -164,9 +164,9 @@ def detect_head_pose(frame):
             y = math.atan2(-rot_matrix[2, 0], sy)
             z = 0
 
-        pitch = math.degrees(x)  # Head down/up
-        yaw = math.degrees(y)    # Head left/right
-        roll = math.degrees(z)   # Head tilt
+        pitch = math.degrees(x)
+        yaw = math.degrees(y)
+        roll = math.degrees(z)
 
         smoothed_pitch = pitch
         if prev_pitch is not None:
@@ -174,7 +174,7 @@ def detect_head_pose(frame):
                 smoothed_pitch = prev_pitch  
             else:
                 smoothed_pitch = prev_pitch * (1 - pitch_alpha) + pitch * pitch_alpha
-        prev_pitch = smoothed_pitch  
+        prev_pitch = smoothed_pitch
 
         if smoothed_pitch < UP_THRESHOLD:
             direction = 'DOWN'
@@ -210,7 +210,7 @@ def detect_ball(frame):
     center = (0, 0)
     ball_diameter = 0
     best_box = None
-    max_diameter = 0  
+    max_diameter = 0
 
     for box, cls_id, score in zip(yolo_result.boxes.xyxy, yolo_result.boxes.cls, yolo_result.boxes.conf):
         cls_id = int(cls_id)
@@ -218,7 +218,7 @@ def detect_ball(frame):
         if score < 0.1:
             continue
 
-        if cls_id == 32: 
+        if cls_id == 32:
             width = x2 - x1
             height = y2 - y1
             diameter = (width + height) / 2
@@ -241,8 +241,8 @@ def detect_person(side_frame):
     
     person_center = (0, 0)
     person_diameter = 0
-    best_box = None
-    max_diameter = 0  
+    person_best_box = None
+    max_diameter = 0
 
     for box, cls_id, score in zip(yolo_result.boxes.xyxy, yolo_result.boxes.cls, yolo_result.boxes.conf):
         cls_id = int(cls_id)
@@ -250,7 +250,7 @@ def detect_person(side_frame):
         if score < 0.4:
             continue
 
-        if cls_id == 0: 
+        if cls_id == 0:
             width = x2 - x1
             height = y2 - y1
             diameter = (width + height) / 2
@@ -261,17 +261,17 @@ def detect_person(side_frame):
                 person_best_box = [x1, y1, x2, y2]
                 person_center = ((x1 + x2) // 2, (y1 + y2) // 2)
 
-    if person_best_box:  
-        x1, y1, x2, y2 = person_best_box  
+    if person_best_box:
+        x1, y1, x2, y2 = person_best_box
         cv2.rectangle(side_frame, (x1, y1), (x2, y2), (0, 0, 225), 2)
 
-    return side_frame, person_center, person_diameter, person_best_box 
+    return side_frame, person_center, person_diameter, person_best_box
 
 def detect_receiving_foot(best_box, ball_center):
     global initial_detections, determined_foot, detection_count
     
     if ball_center is None or best_box is None or ball_center == (0, 0):
-        return determined_foot  
+        return determined_foot
     
     if determined_foot is None:
         x1, y1, x2, y2 = best_box
@@ -302,44 +302,42 @@ def detect_receiving_foot(best_box, ball_center):
     
     else:
         return determined_foot
-dist_threshold=130
-def check_receiving_position(side_frame, right_point, left_point, ball_center, best_box): 
+
+def check_receiving_position(side_frame, right_point, left_point, ball_center, best_box):
     if ball_center == (0, 0) or right_point is None or left_point is None or best_box is None:
-        return False  
+        return False
     
     foot = detect_receiving_foot(best_box, ball_center)
 
-    
     if foot == "right" and right_point is not None:
         right_dist = math.sqrt((right_point[0] - ball_center[0]) ** 2 + (right_point[1] - ball_center[1]) ** 2)
         print(f"Distance from point to ball right: {right_dist}")
         
-        cv2.line(side_frame, right_point, ball_center, (0, 255, 255), 2) 
+        cv2.line(side_frame, right_point, ball_center, (0, 255, 255), 2)
         cv2.putText(side_frame, f"R-Dist: {int(right_dist)}", 
                     (right_point[0], right_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        if right_dist < dist_threshold:
+        if right_dist < 55:
             print("detected (right foot)")
             return True
             
-    elif foot == "left" and left_point is not None:         
+    elif foot == "left" and left_point is not None:
         left_dist = math.sqrt((left_point[0] - ball_center[0]) ** 2 + (left_point[1] - ball_center[1]) ** 2)
         print(f"Distance from point to ball left: {left_dist}")
         
-        cv2.line(side_frame, left_point, ball_center, (0, 255, 255), 2)  
+        cv2.line(side_frame, left_point, ball_center, (0, 255, 255), 2)
         cv2.putText(side_frame, f"L-Dist: {int(left_dist)}", 
                     (left_point[0], left_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        if left_dist < dist_threshold:
+        if left_dist < 55:
             print("detected (left foot)")
             return True
             
     return False
 
-def draw_ankel_arrow(frame, ankle, finger, hip=None, knee=None, color=(255,0,0), thickness=2):#completed
-
+def draw_ankel_arrow(frame, ankle, finger, hip=None, knee=None, color=(255,0,0), thickness=2):
     cv2.arrowedLine(frame, ankle, finger, color, thickness, tipLength=0.3)
     
     dist = int(((ankle[0] - finger[0])**2 + (ankle[1] - finger[1])**2)**0.5)
@@ -411,27 +409,27 @@ def process_pose_and_draw_arrows(frame, pose_instance):
                 left_shoulder, right_shoulder,
                 left_knee, right_knee)
     else:
-        return (None,) * 12 
+        return (None,) * 12
 
 def calculate_knee_angle(hip, knee, ankle):
-    v1 = (hip[0] - knee[0], hip[1] - knee[1])   
-    v2 = (ankle[0] - knee[0], ankle[1] - knee[1]) 
+    v1 = (hip[0] - knee[0], hip[1] - knee[1])
+    v2 = (ankle[0] - knee[0], ankle[1] - knee[1])
 
     v1_len = math.sqrt(v1[0]**2 + v1[1]**2)
     v2_len = math.sqrt(v2[0]**2 + v2[1]**2)
 
     if v1_len == 0 or v2_len == 0:
-        return None 
+        return None
 
     cos_theta = (v1[0]*v2[0] + v1[1]*v2[1]) / (v1_len * v2_len)
-    cos_theta = max(min(cos_theta, 1), -1)  
+    cos_theta = max(min(cos_theta, 1), -1)
     angle = math.degrees(math.acos(cos_theta))
     return int(angle)
 
 def draw_knee_angle(frame, hip, knee, ankle, color=(255, 255, 0)):
     angle = calculate_knee_angle(hip, knee, ankle)
     if angle is not None:
-        cv2.circle(frame, knee, 5, color, -1) 
+        cv2.circle(frame, knee, 5, color, -1)
         cv2.putText(frame, f"{angle}", (knee[0] + 10, knee[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
     return angle
@@ -453,7 +451,7 @@ def calculate_vertical_torso_angle(left_hip, right_hip, left_shoulder, right_sho
     dx = mid_shoulder[0] - mid_hip[0]
     dy = mid_shoulder[1] - mid_hip[1]
 
-    angle = math.degrees(math.atan2(dy, dx)) 
+    angle = math.degrees(math.atan2(dy, dx))
     return int(abs(angle))
 
 def calculate_side_torso_angle(hip, shoulder):
@@ -463,7 +461,7 @@ def calculate_side_torso_angle(hip, shoulder):
     dx = shoulder[0] - hip[0]
     dy = shoulder[1] - hip[1]
 
-    angle = math.degrees(math.atan2(dx, dy))  
+    angle = math.degrees(math.atan2(dx, dy))
 
     return int(abs(angle))
 
@@ -471,7 +469,7 @@ def calculate_ankle_ball_dist_and_draw(frame, right_ankle, left_ankle, ball_cent
     if right_ankle is None or left_ankle is None or ball_center is None or ball_diameter is None:
         return None
     
-    if ball_diameter <= 0: 
+    if ball_diameter <= 0:
         cv2.putText(frame, "Ball not detected", (50, 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         return None
@@ -481,17 +479,17 @@ def calculate_ankle_ball_dist_and_draw(frame, right_ankle, left_ankle, ball_cent
     elif foot == "left" and right_ankle is not None:
         ankle = right_ankle
     else:
-        return None   
+        return None
 
     ankle_ball_dist_px = math.sqrt(
         (ankle[0] - ball_center[0])**2 +
         (ankle[1] - ball_center[1])**2
     )
 
-    real_ball_diameter = 22  
-    scale_factor = ball_diameter / real_ball_diameter 
+    real_ball_diameter = 22
+    scale_factor = ball_diameter / real_ball_diameter
 
-    if scale_factor == 0: 
+    if scale_factor == 0:
         return None
 
     ankle_ball_dist_cm = ankle_ball_dist_px / scale_factor
@@ -540,7 +538,7 @@ def get_normalized_heel_positions(box, right_heel, left_heel, foot):
 def export_analysis_to_json(receiving_foot, head_direction, front_pelvis_angle, front_torso_angle,
                             ankle_arrows, normalized_receiving_ankle_position, side_supporting_knee_angle,
                             side_torso_angle_, heel_ball_y, heel_ball_x, right_ankle_values, left_ankle_values,
-                            ankle_ball_dist_cm):  # 👈 أضف هذا الحقل
+                            ankle_ball_dist_cm):
     analysis_data = {
         "receiving_foot": receiving_foot,
         "heel_ball_percentage_y": heel_ball_y,
@@ -557,33 +555,29 @@ def export_analysis_to_json(receiving_foot, head_direction, front_pelvis_angle, 
         "side_supporting_knee_angle": side_supporting_knee_angle,
         "side_torso_angle": side_torso_angle_,
         "timestamp": datetime.now().isoformat(),
-        "ankle_ball_dist_cm": ankle_ball_dist_cm  # 👈 أضف هذا السطر
+        "ankle_ball_dist_cm": ankle_ball_dist_cm
     }
     return analysis_data
 
-def calculate_ankle_ground_dis(right_ankle,left_ankle,foot, box):#completed
+def calculate_ankle_ground_dis(right_ankle, left_ankle, foot, box):
     x1, y1, x2, y2 = box
     box_height = y2 - y1
     box_width = x2 - x1
-    if foot=="right":
-        
+    if foot == "right":
         ankle_x, ankle_y = right_ankle
-    elif foot=="left":
-        
+    elif foot == "left":
         ankle_x, ankle_y = left_ankle
-    
 
     if box_height != 0:
         ankle_y_percentage = ((ankle_y - y1) / box_height) * 100
     else:
-        ankle_y_percentage = None  
+        ankle_y_percentage = None
 
     if box_width != 0:
         ankle_x_percentage = ((ankle_x - x1) / box_width) * 100
     else:
         ankle_x_percentage = None
 
-        
     return ankle_y_percentage, ankle_x_percentage
     
 init_head_pose_detector(up_threshold=-10, down_threshold=10)
@@ -601,149 +595,243 @@ def reset_detection_state():
     chosen_side_frame = None
     skip_frames = 0
     prev_pitch = None
-    
-    return results
+
 frame_history = []
-results=None
-def analyze_receiving_actions(path, side_path, pose, pose_side, dis_threshold=100):
-    cap = cv2.VideoCapture(path)
-    cap2 = cv2.VideoCapture(side_path)
 
-    results = []
-
-    # متغيرات تتبع الحالة (مثل الكود الثاني)
-    chosen_distance = None
+def analyze_videos(front_path=None, side_path=None):
+    if side_path is None:
+        raise ValueError("Side view video is mandatory.")
+    
     chosen_frame = None
-    chosen_side_frame = None
-    prev_distance_frame = None
-    increase_count = 0
-    skip_frames = 0
+    reset_detection_state()
+    global model, pose, pose_side, prev_distance, prev_frame, skip_frames, prev_pitch, initial_detections, determined_foot, detection_count, prev_side_frame, chosen_side_frame, frame_history
 
+    has_front = front_path is not None
+    
+    cap = None
+    cap2 = cv2.VideoCapture(side_path)
+    
+    if has_front:
+        cap = cv2.VideoCapture(front_path)
+    
+    results = []
+    frame_history = []
+    
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        if has_front:
+            ret, frame = cap.read()
+            if not ret:
+                break
+        else:
+            frame = None
+        
         ret2, side_frame = cap2.read()
         if not ret2:
             break
-
-        frame_for_headpose = frame.copy()
-        processed_frame, direction, pitch, yaw, roll, bbox = detect_head_pose(frame_for_headpose)
-
-        frame, center, ball_diameter, box = detect_ball(frame)
+        
+        direction = None
+        pitch = None
+        yaw = None
+        roll = None
+        bbox = None
+        
+        if has_front and frame is not None:
+            frame_for_headpose = frame.copy()
+            processed_frame, direction, pitch, yaw, roll, bbox = detect_head_pose(frame_for_headpose)
+            frame, center, ball_diameter, box = detect_ball(frame)
+            right_ankle, left_ankle, right_heel, left_heel, finger_xy_l, finger_xy_r, left_hip, right_hip, left_shoulder, right_shoulder, left_knee, right_knee = process_pose_and_draw_arrows(frame, pose)
+        else:
+            center = (0, 0)
+            ball_diameter = 0
+            box = None
+            right_ankle = None
+            left_ankle = None
+            right_heel = None
+            left_heel = None
+            finger_xy_l = None
+            finger_xy_r = None
+            left_hip = None
+            right_hip = None
+            left_shoulder = None
+            right_shoulder = None
+            left_knee = None
+            right_knee = None
+        
         side_frame, center_side, side_ball_diameter, side_box = detect_ball(side_frame)
         side_frame, person_center, person_diameter, best_box = detect_person(side_frame)
-
-        # استخراج نقاط الـ pose
-        right_ankle, left_ankle, right_heel, left_heel, finger_xy_l, finger_xy_r, left_hip, right_hip, left_shoulder, right_shoulder, left_knee, right_knee = process_pose_and_draw_arrows(frame, pose)
+        
         side_right_ankle, side_left_ankle, side_right_heel, side_left_heel, side_finger_xy_l, side_finger_xy_r, side_left_hip, side_right_hip, side_left_shoulder, side_right_shoulder, side_left_knee, side_right_knee = process_pose_and_draw_arrows(side_frame, pose_side)
-
+        
         foot = detect_receiving_foot(best_box, center_side)
-        real_distance = calculate_ankle_ball_dist_and_draw(frame, right_ankle, left_ankle, center, ball_diameter, foot)
+        
+        if has_front and frame is not None:
+            real_distance = calculate_ankle_ball_dist_and_draw(chosen_frame, right_ankle, left_ankle, center, ball_diameter, foot)
+        else:
+            real_distance = None
 
         if skip_frames > 0:
             skip_frames -= 1
             continue
-
+        
         receiving = check_receiving_position(side_frame, side_right_ankle, side_left_ankle, center_side, best_box)
-
+        
         if receiving:
-            # حساب المسافة حسب القدم
             if foot == "right":
-                distance = math.sqrt((side_right_ankle[0] - center_side[0])**2 + (side_right_ankle[1] - center_side[1])**2)
+                distance = math.sqrt(
+                    (side_right_ankle[0] - center_side[0])**2 +
+                    (side_right_ankle[1] - center_side[1])**2
+                )
             elif foot == "left":
-                distance = math.sqrt((side_left_ankle[0] - center_side[0])**2 + (side_left_ankle[1] - center_side[1])**2)
+                distance = math.sqrt(
+                    (side_left_ankle[0] - center_side[0])**2 +
+                    (side_left_ankle[1] - center_side[1])**2
+                )
             else:
-                distance = None
+                distance = 0
 
-            if distance is not None and distance < dist_threshold:
-                # إذا كانت أول مرة أو مسافة أصغر من السابقة
-                if chosen_distance is None or distance < chosen_distance:
-                    chosen_distance = distance
-                    chosen_frame = frame.copy()
-                    chosen_side_frame = side_frame.copy()
-                    prev_distance_frame = distance
-                    increase_count = 0
-                else:
-                    # المسافة بدأت تزيد
-                    if distance > prev_distance_frame:
-                        increase_count += 1
+            frame_history.append({
+                'distance': distance,
+                'frame': frame.copy() if has_front and frame is not None else None,
+                'side_frame': side_frame.copy()
+            })
+            
+            if len(frame_history) > 5:
+                frame_history.pop(0)
+            
+            if frame_history:
+                min_frame_data = min(frame_history, key=lambda x: x['distance'])
+                chosen_frame = min_frame_data['frame'].copy() if min_frame_data['frame'] is not None else None
+                chosen_side_frame = min_frame_data['side_frame'].copy()
+                
+                r_a_a = None
+                r_a_d = None
+                l_a_a = None
+                l_a_d = None
+                pelvis_angle = None
+                torso_angle = None
+                y_perc = None
+                x_perc = None
+                y_perc_norm = None
+                x_perc_norm = None
+                normalized_receiving_ankle_position = None
+                ankle_arrows = {}
+                
+                if has_front and chosen_frame is not None:
+                    r_a_a, r_a_d = draw_ankel_arrow(chosen_frame, right_ankle, finger_xy_r, hip=right_hip, knee=right_knee, color=(255,0,255))
+                    l_a_a, l_a_d = draw_ankel_arrow(chosen_frame, left_ankle, finger_xy_l, hip=left_hip, knee=left_knee, color=(255,0,0))
+                    
+                    pelvis_angle = calculate_horizontal_pelvis_angle(left_hip, right_hip)
+                    torso_angle = calculate_vertical_torso_angle(left_hip, right_hip, left_shoulder, right_shoulder)
+                    
+                    if right_hip and right_knee and right_ankle:
+                        draw_knee_angle(chosen_frame, right_hip, right_knee, right_ankle, color=(0,255,255))
+                    if left_hip and left_knee and left_ankle:
+                        draw_knee_angle(chosen_frame, left_hip, left_knee, left_ankle, color=(255,0,255))
+                    
+                    if box is not None and right_heel is not None:
+                        y_perc, x_perc = calculate_ankle_ground_dis(right_heel, left_heel, foot, box)
+                        x_perc = abs(100 - x_perc)
+                        print(f"Ankle Y position: {y_perc:.1f} % | X position: {x_perc:.1f} %")
+                        cv2.putText(chosen_frame, f"Ankle Y: {y_perc:.1f}% | X: {x_perc:.1f}%", (50,200), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
                     else:
-                        increase_count = 0
-                    prev_distance_frame = distance
+                        y_perc = None
+                        x_perc = None
+                        if chosen_frame is not None:
+                            cv2.putText(chosen_frame, "Ball not detected - cannot calculate position", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    
+                    if box is not None and foot is not None:
+                        y_perc_norm, x_perc_norm = get_normalized_heel_positions(box, right_heel, left_heel, foot)
+                        normalized_receiving_ankle_position = {
+                            "Y_position_percentage": y_perc_norm,
+                            "X_position_percentage": x_perc_norm
+                        }
+                    else:
+                        normalized_receiving_ankle_position = None
+                    
+                    if right_ankle is not None and finger_xy_r is not None and right_hip is not None and right_knee is not None:
+                        arrow_dist_r = int(math.sqrt(
+                            (right_ankle[0] - finger_xy_r[0])**2 +
+                            (right_ankle[1] - finger_xy_r[1])**2
+                        ))
+                        arrow_dir_r = (finger_xy_r[0] - right_ankle[0], finger_xy_r[1] - right_ankle[1])
+                        arrow_angle_r = calculate_knee_angle(right_hip, right_knee, right_ankle)
+                        ankle_arrows['right'] = {
+                            'distance': arrow_dist_r,
+                            'direction_vector': arrow_dir_r,
+                            'knee_angle': arrow_angle_r
+                        }
+                    else:
+                        ankle_arrows['right'] = None
 
-                    # إذا زادت 3 مرات متتالية بعد أقل مسافة
-                    if increase_count >= 3 and chosen_frame is not None:
-                        # --- إجراء التحليل على chosen_frame ---
-                        # رسم الأسهم والزوايا
-                        r_a_a, r_a_d = draw_ankel_arrow(chosen_frame, right_ankle, finger_xy_r, hip=right_hip, knee=right_knee, color=(255,0,255))
-                        l_a_a, l_a_d = draw_ankel_arrow(chosen_frame, left_ankle, finger_xy_l, hip=left_hip, knee=left_knee, color=(255,0,0))
+                    if left_ankle is not None and finger_xy_l is not None and left_hip is not None and left_knee is not None:
+                        arrow_dist_l = int(math.sqrt(
+                            (left_ankle[0] - finger_xy_l[0])**2 +
+                            (left_ankle[1] - finger_xy_l[1])**2
+                        ))
+                        arrow_dir_l = (finger_xy_l[0] - left_ankle[0], finger_xy_l[1] - left_ankle[1])
+                        arrow_angle_l = calculate_knee_angle(left_hip, left_knee, left_ankle)
+                        ankle_arrows['left'] = {
+                            'distance': arrow_dist_l,
+                            'direction_vector': arrow_dir_l,
+                            'knee_angle': arrow_angle_l
+                        }
+                    else:
+                        ankle_arrows['left'] = None
 
-                        pelvis_angle = calculate_horizontal_pelvis_angle(left_hip, right_hip)
-                        torso_angle = calculate_vertical_torso_angle(left_hip, right_hip, left_shoulder, right_shoulder)
+                    calculate_ankle_ball_dist_and_draw(chosen_frame, right_ankle, left_ankle, center, ball_diameter, foot)
+                    
+                    chosen_frame = cv2.resize(chosen_frame, None, fx=0.75, fy=0.75, interpolation=cv2.INTER_CUBIC)
+                
+                side_right_angle = None
+                side_left_angle = None
+                side_pelvis_angle = None
+                side_torso_angle_ = None
+                
+                if side_right_hip and side_right_knee and side_right_ankle:
+                    side_right_angle = draw_knee_angle(chosen_side_frame, side_right_hip, side_right_knee, side_right_ankle, color=(0,255,255))
+                if side_left_hip and side_left_knee and side_left_ankle:
+                    side_left_angle = draw_knee_angle(chosen_side_frame, side_left_hip, side_left_knee, side_left_ankle, color=(255,0,255))
+                
+                if side_left_hip and side_right_hip:
+                    side_pelvis_angle = calculate_horizontal_pelvis_angle(side_left_hip, side_right_hip)
+                
+                if side_left_hip and side_right_hip and side_left_shoulder and side_right_shoulder:
+                    side_torso_angle_ = calculate_vertical_torso_angle(side_left_hip, side_right_hip, side_left_shoulder, side_right_shoulder)
+                
+                if has_front and frame is not None:
+                    processed_frame, direction, pitch, yaw, roll, bbox = detect_head_pose(frame_for_headpose)
 
-                        if right_hip and right_knee and right_ankle:
-                            draw_knee_angle(chosen_frame, right_hip, right_knee, right_ankle, color=(0,255,255))
-                        if left_hip and left_knee and left_ankle:
-                            draw_knee_angle(chosen_frame, left_hip, left_knee, left_ankle, color=(255,0,255))
-
-                        side_right_angle = side_left_angle = None
-                        side_pelvis_angle = None
-                        side_torso_angle_ = None
-
-                        if side_right_hip and side_right_knee and side_right_ankle:
-                            side_right_angle = draw_knee_angle(chosen_side_frame, side_right_hip, side_right_knee, side_right_ankle, color=(0,255,255))
-                        if side_left_hip and side_left_knee and side_left_ankle:
-                            side_left_angle = draw_knee_angle(chosen_side_frame, side_left_hip, side_left_knee, side_left_ankle, color=(255,0,255))
-
-                        if side_left_hip and side_right_hip:
-                            side_pelvis_angle = calculate_horizontal_pelvis_angle(side_left_hip, side_right_hip)
-                        if side_left_hip and side_right_hip and side_left_shoulder and side_right_shoulder:
-                            side_torso_angle_ = calculate_vertical_torso_angle(side_left_hip, side_right_hip, side_left_shoulder, side_right_shoulder)
-
-                        # تحديث head pose لو محتاج
-                        processed_frame, direction, pitch, yaw, roll, bbox = detect_head_pose(frame_for_headpose)
-
-                        y_perc = x_perc = None
-                        if box is not None and (right_heel is not None or left_heel is not None):
-                            y_perc, x_perc = calculate_ankle_ground_dis(right_heel, left_heel, foot, box)
-                            x_perc = abs(100 - x_perc)
-
-                        # تصدير التحليل
-                        analysis_dict = export_analysis_to_json(
-                            foot=foot,
-                            direction=direction,
-                            pelvis_angle=pelvis_angle,
-                            torso_angle=torso_angle,
-                            knee_angles={"right": side_right_angle, "left": side_left_angle},
-                            side_pelvis_angle=side_pelvis_angle,
-                            side_knee_angles=None,  # يمكنك إضافته لاحقًا
-                            side_torso_angle=side_torso_angle_,
-                            ankle_y_percent=y_perc,
-                            ankle_x_percent=x_perc,
-                            right_ankle_arrow=(r_a_a, r_a_d),
-                            left_ankle_arrow=(l_a_a, l_a_d),
-                            real_distance=real_distance
-                        )
-
-                        results.append({
-                            "analysis": analysis_dict,
-                            "front_frame": chosen_frame,
-                            "side_frame": chosen_side_frame
-                        })
-
-                        # --- إعادة التهيئة للبحث عن لحظة استقبال جديدة ---
-                        chosen_distance = None
-                        chosen_frame = None
-                        chosen_side_frame = None
-                        prev_distance_frame = None
-                        increase_count = 0
-                        skip_frames = 50  # تخطي 50 إطارًا لتجنب التكرار
-
-    cap.release()
+                if foot == "right":
+                    supporting_knee_angle = side_left_angle if side_left_angle is not None else None
+                else:
+                    supporting_knee_angle = side_right_angle if side_right_angle is not None else None
+                
+                chosen_side_frame = cv2.resize(chosen_side_frame, None, fx=0.75, fy=0.75, interpolation=cv2.INTER_CUBIC)
+                
+                analysis_dict = export_analysis_to_json(
+                    foot, direction, pelvis_angle, torso_angle,
+                    ankle_arrows, normalized_receiving_ankle_position,
+                    supporting_knee_angle, side_torso_angle_,
+                    y_perc, x_perc, (r_a_a, r_a_d), (l_a_a, l_a_d),
+                    real_distance
+                )
+                
+                results.append({
+                    "analysis": analysis_dict,
+                    "front_frame": chosen_frame,
+                    "side_frame": chosen_side_frame
+                })
+                
+                prev_distance = None
+                prev_frame = None
+                prev_side_frame = None
+                skip_frames = 50
+    
+    if cap is not None:
+        cap.release()
     cap2.release()
-
+    
     if not results:
         raise ValueError("No receiving actions detected in the videos.")
-
+    
     return results
